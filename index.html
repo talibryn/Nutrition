@@ -63,6 +63,60 @@
       color: var(--text);
     }
 
+    .paste-section {
+      background-color: #27272a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 16px;
+    }
+
+    .paste-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .paste-row input {
+      flex: 1;
+      font-size: 0.95rem;
+      padding: 8px 10px;
+    }
+
+    .paste-btn {
+      width: auto;
+      padding: 8px 14px;
+      font-size: 0.9rem;
+      margin-top: 0;
+      white-space: nowrap;
+    }
+
+    .divider {
+      text-align: center;
+      position: relative;
+      margin: 14px 0;
+    }
+
+    .divider::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .divider span {
+      position: relative;
+      background: var(--card);
+      padding: 0 10px;
+      font-size: 0.75rem;
+      color: var(--subtext);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
     .form-group {
       display: flex;
       flex-direction: column;
@@ -191,6 +245,20 @@
   <!-- Input Card -->
   <div class="card">
     <h2>Log Daily Intake</h2>
+
+    <!-- Quick Paste Tool -->
+    <div class="paste-section">
+      <label for="pasteInput">Quick Paste from Gem (YYYY-MM-DD, cal, P, C, F)</label>
+      <div class="paste-row">
+        <input type="text" id="pasteInput" placeholder="2026-09-28, 2150, 145, 190, 60">
+        <button type="button" class="paste-btn" id="parseSnippetBtn">Load</button>
+      </div>
+    </div>
+
+    <div class="divider">
+      <span>or enter manually</span>
+    </div>
+
     <form id="entryForm">
       <div class="form-group">
         <label for="entryDate">Date</label>
@@ -303,11 +371,30 @@
   const day = String(today.getDate()).padStart(2, '0');
   dateInput.value = `${year}-${month}-${day}`;
 
+  // Quick Snippet Parser
+  document.getElementById('parseSnippetBtn').addEventListener('click', function() {
+    const rawText = document.getElementById('pasteInput').value.trim();
+    if (!rawText) return;
+
+    // Splits on commas, spaces, or tabs
+    const parts = rawText.split(/[,\s]+/).map(p => p.trim()).filter(Boolean);
+
+    if (parts.length >= 5) {
+      document.getElementById('entryDate').value = parts[0];
+      document.getElementById('calories').value = parts[1];
+      document.getElementById('protein').value = parts[2];
+      document.getElementById('carbs').value = parts[3];
+      document.getElementById('fat').value = parts[4];
+      document.getElementById('pasteInput').value = '';
+    } else {
+      alert('Could not parse snippet. Format expected:\nYYYY-MM-DD, Calories, Protein, Carbs, Fat');
+    }
+  });
+
   function updateDisplay() {
     const entries = loadData();
     entries.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    // Stats calculations
     const todayMs = new Date().setHours(23, 59, 59, 999);
     const dayMs = 24 * 60 * 60 * 1000;
 
@@ -328,7 +415,6 @@
       const totalC = filtered.reduce((acc, cur) => acc + cur.carbs, 0);
       const totalF = filtered.reduce((acc, cur) => acc + cur.fat, 0);
 
-      // Average solely over logged days to keep numbers accurate
       return {
         count,
         totalCal: Math.round(totalCal),
@@ -351,7 +437,6 @@
     document.getElementById('avgCal28').textContent = `${s28.avgCal.toLocaleString()} kcal/day`;
     document.getElementById('avgMacros28').textContent = `${s28.avgP}g / ${s28.avgC}g / ${s28.avgF}g`;
 
-    // History rendering
     const historyList = document.getElementById('historyList');
     if (entries.length === 0) {
       historyList.innerHTML = '<span style="color: var(--subtext);">No entries yet.</span>';
@@ -398,7 +483,6 @@
     entries.push(newEntry);
     saveData(entries);
 
-    // Clear inputs except date
     document.getElementById('calories').value = '';
     document.getElementById('protein').value = '';
     document.getElementById('carbs').value = '';
